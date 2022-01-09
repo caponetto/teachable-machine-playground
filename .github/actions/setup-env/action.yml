@@ -1,0 +1,36 @@
+name: "Setup environment"
+
+runs:
+  using: "composite"
+  steps:
+    - name: "Setup Node"
+      uses: actions/setup-node@v2
+      with:
+        node-version: 16.2.0
+        cache: "yarn"
+
+    - name: "Setup Yarn"
+      shell: bash
+      run: |
+        echo "STEP: Setup Yarn"
+        npm install -g yarn@1.22.10
+        yarn config set network-timeout 1000000
+
+    - name: "Install dependencies"
+      shell: bash
+      run: |
+        echo "STEP: Install dependencies"
+        yarn install
+
+    - name: "Check yarn.lock"
+      shell: bash
+      run: |
+        echo "STEP: Check yarn.lock"
+        git diff yarn.lock;
+        [ "0" == "$(git diff yarn.lock | wc -l | tr -d ' ')" ]
+
+    - name: "Check format"
+      shell: bash
+      run: |
+        echo "STEP: Check format"
+        yarn format:check

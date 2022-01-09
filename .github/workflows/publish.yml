@@ -1,0 +1,68 @@
+name: "Publish"
+
+on:
+  workflow_dispatch:
+    inputs:
+      deploy:
+        type: boolean
+        required: false
+        default: false
+
+concurrency:
+  group: "publish"
+  cancel-in-progress: true
+
+env:
+  # Your image details customization goes here
+  IMAGE_NAME: "teachable-machine-playground"
+  IMAGE_TAG: "latest"
+  IMAGE_REGISTRY: "quay.io/caponetto"
+  REGISTRY_USER: "caponetto"
+  # Your OpenShift information goes here
+  OPENSHIFT_SERVER: ${{ secrets.OPENSHIFT_SERVER }}
+  OPENSHIFT_TOKEN: ${{ secrets.OPENSHIFT_TOKEN }}
+  OPENSHIFT_NAMESPACE: "caponetto-dev"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Checkout"
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: "Setup environment"
+        uses: ./.github/actions/setup-env
+
+      - name: "Build the application"
+        shell: bash
+        run: |
+          yarn build:prod
+
+      - name: "Build the container image"
+        shell: bash
+        run: |
+          yarn build:image
+
+      - name: "Push image to quay.io"
+        id: push-image
+        uses: redhat-actions/push-to-registry@v2
+        with:
+          image: ${{ env.IMAGE_NAME }}
+          tags: ${{ env.IMAGE_TAG }}
+          registry: ${{ env.IMAGE_REGISTRY }}
+          username: ${{ env.REGISTRY_USER }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: "Deploy to OpenShift"
+        if: ${{ github.event.inputs.deploy == 'true' }}
+        uses: ./.github/actions/deploy-openshift
+        with:
+          image_url: ${{ steps.push-image.outputs.registry-path }}
+          app_name: ${{ env.IMAGE_NAME }}
+          part_of: ${{ env.IMAGE_NAME }}-app
+          deployment_icon: "js"
+          openshift_server: ${{ env.OPENSHIFT_SERVER }}
+          openshift_token: ${{ env.OPENSHIFT_TOKEN }}
+          openshift_namespace: ${{ env.OPENSHIFT_NAMESPACE }}
