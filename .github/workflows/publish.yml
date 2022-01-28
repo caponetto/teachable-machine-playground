@@ -59,6 +59,7 @@ jobs:
         if: ${{ github.event.inputs.deploy == 'true' }}
         uses: ./.github/actions/deploy-openshift
         with:
+          image_tag: ${{ env.IMAGE_TAG }}
           image_url: ${{ steps.push-image.outputs.registry-path }}
           app_name: ${{ env.IMAGE_NAME }}
           part_of: ${{ env.IMAGE_NAME }}-app
